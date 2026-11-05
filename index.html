@@ -712,7 +712,6 @@ portalButton.addEventListener('click',()=>{
  new ResizeObserver(resize).observe(stage);
  try{
   const [mod,loaderMod]=await Promise.all([import('https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js'),import('https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/loaders/GLTFLoader.js')]);THREE=mod;GLTFLoader=loaderMod.GLTFLoader;
-  if(!window.WebGLRenderingContext)throw new Error('WebGL is not available');
   scene=new THREE.Scene();scene.fog=new THREE.FogExp2(0x100b1c,.045);
   camera=new THREE.PerspectiveCamera(38,1,.1,100);camera.position.set(0,1.2,mobile?10.5:8.2);camera.lookAt(0,0,0);
   renderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:!mobile,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,mobile?1.25:1.65));renderer.setSize(stage.clientWidth,stage.clientHeight,false);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.22;
@@ -736,7 +735,7 @@ portalButton.addEventListener('click',()=>{
     fallback.remove();caption.textContent='Это уже настоящий трёхмерный мир. Потяни его, чтобы рассмотреть со всех сторон ♡';resize();
    }catch(error){console.warn('GLB setup failed:',error);fallback.remove();caption.textContent='Модель не удалось подготовить — показываю резервный 3D-сад ♡';}
   },xhr=>{if(xhr.total)fallback.textContent='Загружаю модель… '+Math.round(xhr.loaded/xhr.total*100)+'%';},error=>{console.warn('GLB load failed:',error);fallback.remove();caption.textContent='Показываю резервный 3D-сад. Проверь файл tanya_universe.glb в GitHub ♡';});
- }catch(err){fallback.textContent='Этот браузер не смог открыть WebGL-сад. Но наш волшебный сад выше всё равно ждёт твоих прикосновений ♡';console.warn('Our Universe 3D scene unavailable:',err);}
+ }catch(err){const detail=err?.message||String(err);fallback.textContent='Не удалось запустить 3D-сцену: '+detail+'. Попробуй обновить страницу или открыть её в Chrome.';console.error('Our Universe 3D scene unavailable:',err);}
 })();
 </script>
 
