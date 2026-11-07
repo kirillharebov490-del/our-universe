@@ -47,16 +47,42 @@ scene.world.color = (0.012, 0.008, 0.035)
 
 # ----------------------------- HELPERS --------------------------------
 def material(name, color, metallic=0.0, roughness=0.45, emission=None, emission_strength=0.0):
+    """Create a Principled material safely across Blender versions/localizations."""
     m = bpy.data.materials.new(name)
-    m.diffuse_color = (*color, 1)
+    m.diffuse_color = (*color, 1.0)
     m.use_nodes = True
-    bs = m.node_tree.nodes.get("Principled BSDF")
-    bs.inputs["Base Color"].default_value = (*color, 1)
-    bs.inputs["Metallic"].default_value = metallic
-    bs.inputs["Roughness"].default_value = roughness
+
+    # Do not rely on the node's display name: it can differ by Blender version
+    # or language. Identify it by its stable Blender node type instead.
+    nodes = m.node_tree.nodes
+    bs = next((node for node in nodes if node.bl_idname == "ShaderNodeBsdfPrincipled"), None)
+    if bs is None:
+        bs = nodes.new("ShaderNodeBsdfPrincipled")
+
+    output = next((node for node in nodes if node.bl_idname == "ShaderNodeOutputMaterial"), None)
+    if output is None:
+        output = nodes.new("ShaderNodeOutputMaterial")
+    if not output.inputs["Surface"].is_linked:
+        m.node_tree.links.new(bs.outputs["BSDF"], output.inputs["Surface"])
+
+    # Socket names changed between Blender releases; guard every optional socket.
+    for socket_name, value in (
+        ("Base Color", (*color, 1.0)),
+        ("Metallic", metallic),
+        ("Roughness", roughness),
+    ):
+        socket = bs.inputs.get(socket_name)
+        if socket is not None:
+            socket.default_value = value
+
     if emission:
-        bs.inputs["Emission Color"].default_value = (*emission, 1)
-        bs.inputs["Emission Strength"].default_value = emission_strength
+        emission_socket = bs.inputs.get("Emission Color") or bs.inputs.get("Emission")
+        strength_socket = bs.inputs.get("Emission Strength")
+        if emission_socket is not None:
+            emission_socket.default_value = (*emission, 1.0)
+        if strength_socket is not None:
+            strength_socket.default_value = emission_strength
+
     return m
 
 def apply_mat(obj, mat):
@@ -292,7 +318,9 @@ scene.node_tree.links.new(rl.outputs["Image"], glare.inputs["Image"])
 scene.node_tree.links.new(glare.outputs["Image"], comp.inputs["Image"])
 
 # Render quality / preview
-scene.eevee.taa_render_samples = 64
+# EEVEE settings vary across Blender versions; keep rendering usable if the API moved.
+if hasattr(scene, "eevee") and hasattr(scene.eevee, "taa_render_samples"):
+    scene.eevee.taa_render_samples = 128
 scene.render.image_settings.file_format = 'FFMPEG'
 scene.render.filepath = OUTPUT_PATH
 scene.frame_set(1)
