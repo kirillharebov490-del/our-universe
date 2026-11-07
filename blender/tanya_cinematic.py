@@ -484,10 +484,26 @@ render_layers = compositor.nodes.new("CompositorNodeRLayers")
 render_layers.location = (-320, 40)
 glare = compositor.nodes.new("CompositorNodeGlare")
 glare.location = (-60, 40)
-glare.glare_type = "FOG_GLOW"
-glare.quality = "HIGH"
-glare.threshold = 1.35
-glare.size = 7
+try:
+    glare.glare_type = "FOG_GLOW"
+except (TypeError, ValueError):
+    pass
+if hasattr(glare, "quality"):
+    try:
+        glare.quality = "HIGH"
+    except (TypeError, ValueError):
+        pass
+# Glare settings moved between node properties and input sockets in newer Blender.
+threshold_input = glare.inputs.get("Threshold")
+if threshold_input is not None:
+    threshold_input.default_value = 1.35
+elif hasattr(glare, "threshold"):
+    glare.threshold = 1.35
+if hasattr(glare, "size"):
+    try:
+        glare.size = 7
+    except (TypeError, ValueError):
+        pass
 composite = compositor.nodes.new("CompositorNodeComposite")
 composite.location = (200, 40)
 compositor.links.new(render_layers.outputs["Image"], glare.inputs["Image"])
